@@ -63,6 +63,7 @@ pub struct PrayerTimes {
     pub asr: DateTime,
     pub maghreb: DateTime,
     pub ishaa: DateTime,
+    pub ishaa_yesterday: DateTime,
     pub fajr: DateTime,
     pub fajr_tomorrow: DateTime,
     pub sherook: DateTime,
@@ -108,6 +109,10 @@ impl PrayerTimes {
         let fajr_time_tomorrow = Self::fajr(tomorrow, location, config)?;
         let fajr_tomorrow = Self::hours_to_time(tomorrow, fajr_time_tomorrow, 0.0, config)?;
 
+        let yesterday = date - Duration::days(1);
+        let ishaa_time_yesterday = Self::ishaa(yesterday, location, config)?;
+        let ishaa_yesterday = Self::hours_to_time(yesterday, ishaa_time_yesterday, 0.0, config)?;
+
         Ok(Self {
             date,
             location,
@@ -116,6 +121,7 @@ impl PrayerTimes {
             asr,
             maghreb,
             ishaa,
+            ishaa_yesterday,
             fajr,
             fajr_tomorrow,
             sherook,
@@ -281,6 +287,24 @@ impl PrayerTimes {
         let now_to_next = now_to_next.num_seconds() as f64;
 
         let whole: f64 = now_to_next / 60.0 / 60.0;
+        let fract = whole.fract();
+        let hours = whole.trunc() as u32;
+        let minutes = (fract * 60.0).round() as u32;
+
+        Ok((hours, minutes))
+    }
+    /// Passed time since current prayer
+    pub fn time_passed(&self) -> Result<(u32, u32), crate::Error> {
+        let current_prayer_time = if time::now() < self.fajr {
+            self.ishaa_yesterday
+        } else {
+            self.time(self.current()?)
+        };
+
+        let current_to_now = time::now() - current_prayer_time;
+        let current_to_now = current_to_now.num_seconds() as f64;
+
+        let whole: f64 = current_to_now / 60.0 / 60.0;
         let fract = whole.fract();
         let hours = whole.trunc() as u32;
         let minutes = (fract * 60.0).round() as u32;
