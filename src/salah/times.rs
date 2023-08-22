@@ -271,7 +271,12 @@ impl PrayerTimes {
     }
     /// Remaining time to next prayer
     pub fn time_remaining(&self) -> Result<(u32, u32), crate::Error> {
-        let next_prayer_time = self.time(self.next()?);
+        let next_prayer_time = if self.ishaa < time::now() {
+            self.fajr_tomorrow
+        } else {
+            self.time(self.next()?)
+        };
+
         let now_to_next = next_prayer_time - time::now();
         let now_to_next = now_to_next.num_seconds() as f64;
 
