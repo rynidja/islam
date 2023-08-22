@@ -310,25 +310,15 @@ impl PrayerTimes {
     }
     /// Helper function for `current`
     fn current_time(&self, time: DateTime) -> Prayer {
-        // dummy value. it will replaced below
-        // just to avoid using `Option` or `Err`
-        let mut current_prayer = Prayer::Dohr;
-
-        let ranges = vec![
-            // fajr, fajr_range
-            (Prayer::Fajr, self.fajr..self.sherook),
-            (Prayer::Sherook, self.sherook..self.dohr),
-            (Prayer::Dohr, self.dohr..self.asr),
-            (Prayer::Asr, self.asr..self.maghreb),
-            (Prayer::Maghreb, self.maghreb..self.ishaa),
-            (Prayer::Ishaa, self.ishaa..self.fajr_tomorrow),
-        ];
-        for (prayer, range) in ranges {
-            if range.contains(&time) {
-                current_prayer = prayer;
-            }
+        match time {
+            time if time < self.fajr => Prayer::Ishaa,
+            time if time < self.sherook => Prayer::Fajr,
+            time if time < self.dohr => Prayer::Sherook,
+            time if time < self.asr => Prayer::Dohr,
+            time if time < self.maghreb => Prayer::Asr,
+            time if time < self.ishaa => Prayer::Maghreb,
+            _ => Prayer::Ishaa,
         }
-        current_prayer
     }
 }
 
@@ -431,7 +421,7 @@ mod tests {
         let date = time::date(2021, 4, 19)?;
         let config = Config::new().with(Method::Singapore, Madhab::Shafi);
         let prayer_times = prayer_times_with_date(config, date)?;
-        let current_prayer_time = expected_time(11, 52, 0)?;
+        let current_prayer_time = expected_time_with_date(date, 11, 58, 0)?;
 
         assert_eq!(prayer_times.current_time(current_prayer_time), Prayer::Dohr);
         Ok(())
@@ -468,6 +458,19 @@ mod tests {
         let config = Config::new().with(Method::Singapore, Madhab::Shafi);
         let prayer_times = prayer_times_with_date(config, date)?;
         let current_prayer_time = expected_time_with_date(date, 19, 1, 0)?;
+
+        assert_eq!(
+            prayer_times.current_time(current_prayer_time),
+            Prayer::Ishaa
+        );
+        Ok(())
+    }
+    #[test]
+    fn current_prayer_is_ishaa_new_day() -> Result<(), crate::Error> {
+        let date = time::date(2021, 4, 19)?;
+        let config = Config::new().with(Method::Singapore, Madhab::Shafi);
+        let prayer_times = prayer_times_with_date(config, date)?;
+        let current_prayer_time = expected_time_with_date(date, 0, 1, 0)?;
 
         assert_eq!(
             prayer_times.current_time(current_prayer_time),
